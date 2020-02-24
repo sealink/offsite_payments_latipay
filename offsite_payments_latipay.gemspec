@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
   s.email = 'zheng.jing@sealink.com.au'
   s.homepage = 'https://github.com/sealink/offsite_payments_latipay'
 
-  s.files = Dir['CHANGELOG', 'README.md', 'MIT-LICENSE', 'lib/**/*']
+  s.files = Dir['CHANGELOG', 'README.md', 'LICENSE', 'lib/**/*']
   s.require_path = 'lib'
 
   s.add_dependency('offsite_payments')
