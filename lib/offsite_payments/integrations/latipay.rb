@@ -17,8 +17,9 @@ module OffsitePayments
           "https://api.latipay.net/v2"
         end
 
-        def initialize(api_key)
+        def initialize(api_key, user_id)
           @api_key = api_key
+          @user_id = user_id
         end
 
         def sign(fields)
@@ -52,6 +53,7 @@ module OffsitePayments
             @message       = @response['message']
           end
 
+          # Latipay doesn't provide error codes for each interface, this is the only list for all the errors.
           ERRORS = {
             '201' => 'order not exist',
             '204' => 'Some fields from input are null',
@@ -113,31 +115,56 @@ module OffsitePayments
         end
       end
 
+      class QueryInterface < Interface
+        def self.url(merchant_reference)
+          "#{base_url}/transaction/#{CGI.escape(merchant_reference)}"
+        end
+
+        def call(merchant_reference)
+          options = { user_id: @user_id }
+          signature = self.sign(options.merge({ merchant_reference: merchant_reference }))
+          options[:signature] = signature
+
+          raise ArgumentError, "Merchant reference must be specified" if merchant_reference.blank?
+          raw_response = ssl_get(self.class.url(merchant_reference), options)
+          parsed_response = parse_response(raw_response)
+          validate_response(parsed_response)
+          parsed_response
+        end
+
+        def validate_response(parsed_response)
+          raise QueryRequestError, parsed_response unless parsed_response['code'] == 0
+          message = parsed_response['merchant_reference'] + parsed_response['payment_method'] + parsed_response['status'] + parsed_response['currency'] + parsed_response['amount']
+          signature = parsed_response['signature']
+          raise StandardError, 'Invalid Signature in response' unless verify_signature(message, signature)
+        end
+
+        class QueryRequestError < RequestError
+          def errors
+            ERRORS
+          end
+        end
+      end
+
       class RefundInterface < Interface
         def self.url
+          # according to latipay doc, this url does not have a version part.
           "https://api.latipay.net/refund"
         end
 
         def call(options)
           options[:signature] = self.sign(options)
-          puts '--------'
-          puts options.to_json
           raw_response = ssl_post(self.class.url, options.to_json, standard_headers)
           parsed_response = parse_response(raw_response)
-          puts '--------'
-          puts parsed_response
           validate_response(parsed_response)
-          "#{parsed_response['host_url']}/#{parsed_response['nonce']}"
+          'success'
         end
 
         def validate_response(parsed_response)
-          raise TransactionRequestError, parsed_response unless parsed_response['code'] == 0
-          message = parsed_response['nonce'] + parsed_response['host_url']
-          signature = parsed_response['signature']
-          raise StandardError, 'Invalid Signature in response' unless verify_signature(message, signature)
+          raise RefundRequestError, parsed_response unless parsed_response['code'] == 0
         end
 
-        class RefundInterface < RequestError
+        class RefundRequestError < RequestError
           def errors
             ERRORS
           end
@@ -147,6 +174,7 @@ module OffsitePayments
       class Helper < OffsitePayments::Helper
         def initialize(order, credentials, options = {})
           @api_key = credentials.fetch(:api_key)
+          @user_id = credentials.fetch(:user_id)
           super(order, credentials.fetch(:user_id), options.except(
             :payment_method, :ip, :product_name
           ))
@@ -169,52 +197,31 @@ module OffsitePayments
           if form_fields['payment_method'] == 'wechat'
             form_fields.merge!({ 'present_qr' => '1' })
           end
-          TransactionInterface.new(@api_key).call(form_fields)
+          TransactionInterface.new(@api_key, @user_id).call(form_fields)
         end
       end
 
       class Notification < OffsitePayments::Notification
-        def complete?
-          params['']
+        def initialize(params, credentials = {})
+          token = params.fetch('Token') { params.fetch('token') }
+          @params = QueryInterface.new(credentials.fetch(:api_key), credentials.fetch(:user_id)).call(token)
         end
 
-        def item_id
-          params['']
+        def complete?
+          params['status'] = 'paid'
         end
 
         def transaction_id
-          params['']
-        end
-
-        # When was this payment received by the client.
-        def received_at
-          params['']
-        end
-
-        def payer_email
-          params['']
-        end
-
-        def receiver_email
-          params['']
-        end
-
-        def security_key
-          params['']
+          params['order_id']
         end
 
         # the money amount we received in X.2 decimal.
         def gross
-          params['']
-        end
-
-        # Was this a test transaction?
-        def test?
-          params[''] == 'test'
+          params['amount']
         end
 
         def status
-          params['']
+          params['status']
         end
 
         # Acknowledge the transaction to Latipay. This method has to be called after a new
@@ -232,36 +239,7 @@ module OffsitePayments
         #       ... log possible hacking attempt ...
         #     end
         def acknowledge(authcode = nil)
-          payload = raw
-
-          uri = URI.parse(Latipay.notification_confirmation_url)
-
-          request = Net::HTTP::Post.new(uri.path)
-
-          request['Content-Length'] = "#{payload.size}"
-          request['User-Agent'] = "Active Merchant -- http://activemerchant.org/"
-          request['Content-Type'] = "application/x-www-form-urlencoded"
-
-          http = Net::HTTP.new(uri.host, uri.port)
-          http.verify_mode    = OpenSSL::SSL::VERIFY_NONE unless @ssl_strict
-          http.use_ssl        = true
-
-          response = http.request(request, payload)
-
-          # Replace with the appropriate codes
-          raise StandardError.new("Faulty Latipay result: #{response.body}") unless ["AUTHORISED", "DECLINED"].include?(response.body)
-          response.body == "AUTHORISED"
-        end
-
-        private
-
-        # Take the posted data and move the relevant data into a hash
-        def parse(post)
-          @raw = post.to_s
-          for line in @raw.split('&')
-            key, value = *line.scan( %r{^([A-Za-z0-9_.-]+)\=(.*)$} ).flatten
-            params[key] = CGI.unescape(value.to_s) if key.present?
-          end
+          true
         end
       end
     end
