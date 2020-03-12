@@ -91,12 +91,8 @@ module OffsitePayments
 
         def call(options)
           options[:signature] = self.sign(options)
-          puts '--------'
-          puts options.to_json
           raw_response = ssl_post(self.class.url, options.to_json, standard_headers)
           parsed_response = parse_response(raw_response)
-          puts '--------'
-          puts parsed_response
           validate_response(parsed_response)
           "#{parsed_response['host_url']}/#{parsed_response['nonce']}"
         end
@@ -126,7 +122,8 @@ module OffsitePayments
           options[:signature] = signature
 
           raise ArgumentError, "Merchant reference must be specified" if merchant_reference.blank?
-          raw_response = ssl_get(self.class.url(merchant_reference), options)
+          url = "#{self.class.url(merchant_reference)}?#{options.to_query}"
+          raw_response = ssl_get(url, standard_headers)
           parsed_response = parse_response(raw_response)
           validate_response(parsed_response)
           parsed_response
@@ -134,7 +131,7 @@ module OffsitePayments
 
         def validate_response(parsed_response)
           raise QueryRequestError, parsed_response unless parsed_response['code'] == 0
-          message = parsed_response['merchant_reference'] + parsed_response['payment_method'] + parsed_response['status'] + parsed_response['currency'] + parsed_response['amount']
+          message = "#{parsed_response['merchant_reference']}#{parsed_response['payment_method']}#{parsed_response['status']}#{parsed_response['currency']}#{parsed_response['amount']}"
           signature = parsed_response['signature']
           raise StandardError, 'Invalid Signature in response' unless verify_signature(message, signature)
         end
@@ -208,7 +205,7 @@ module OffsitePayments
         end
 
         def complete?
-          params['status'] = 'paid'
+          params['status'] == 'paid'
         end
 
         def transaction_id
