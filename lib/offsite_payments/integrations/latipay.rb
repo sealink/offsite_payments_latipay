@@ -149,12 +149,15 @@ module OffsitePayments
           "https://api.latipay.net/refund"
         end
 
-        def call(options)
+        def call(order_id, refund_amount, reference = '')
+          raise ArgumentError, "Order ID must be specified" if order_id.blank?
+          raise ArgumentError, "Refund amount must be specified" if refund_amount.blank?
+          options = { refund_amount: refund_amount, reference: reference, user_id: @user_id, order_id: order_id }
           options[:signature] = self.sign(options)
           raw_response = ssl_post(self.class.url, options.to_json, standard_headers)
           parsed_response = parse_response(raw_response)
           validate_response(parsed_response)
-          'success'
+          parsed_response['message']
         end
 
         def validate_response(parsed_response)
