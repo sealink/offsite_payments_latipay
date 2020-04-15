@@ -4,26 +4,20 @@ sudo: false
 cache: bundler
 
 rvm:
+- 2.7
+- 2.6
 - 2.5
-- 2.4
-- 2.3
-- 2.2
-- 2.1
-- 2.0
-- 1.9
 
 gemfile:
-- Gemfile.rails32
-- Gemfile.rails40
-- Gemfile.rails41
-- Gemfile.rails42
-- Gemfile.rails5
+- gemfiles/rails5.gemfile
+- gemfiles/rails6.gemfile
 
 matrix:
-  exclude:
-    - rvm: 1.9
-      gemfile: Gemfile.rails5
-    - rvm: 2.1
-      gemfile: Gemfile.rails5
-    - rvm: 2.0
-      gemfile: Gemfile.rails5
+  fast_finish: true
+
+before_install:
+  - gem install bundler
+
+notifications:
+  email:
+    - support@travellink.com.au
