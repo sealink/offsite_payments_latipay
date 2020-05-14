@@ -23,5 +23,9 @@ Gem::Specification.new do |s|
   s.add_development_dependency('bundler')
   s.add_development_dependency('rake')
   s.add_development_dependency('money')
+  s.add_development_dependency('nokogiri')
+  s.add_development_dependency('activesupport')
+  s.add_development_dependency('actionpack')
+  s.add_development_dependency('actionview')
   s.add_development_dependency('test-unit', '~> 3.0')
 end
