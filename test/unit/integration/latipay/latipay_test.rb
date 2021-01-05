@@ -18,8 +18,6 @@ class LatipayTest < Test::Unit::TestCase
   def test_purchase_offsite_response
     # Below response from instance running remote test
     response_params = { "token" => @order }
-    # require 'pry'
-    # binding.pry
     notification = OffsitePayments::Integrations::Latipay::Notification.new(response_params, @credentials)
 
     secret = OpenSSL::HMAC.hexdigest(OpenSSL::Digest::SHA256.new, @credentials[:api_key], "merchant_reference=#{@order}&user_id=#{@user_id}#{@credentials[:api_key]}")
