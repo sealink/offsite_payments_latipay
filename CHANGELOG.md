@@ -2,4 +2,5 @@
 
 ## Unreleased
 
-* [DC-3050] Create latipay integration from offsite_payments gem
+- [TT-8618] Update to build with github actions / ruby 3.0 / rails 6.1
+- [DC-3050] Create latipay integration from offsite_payments gem

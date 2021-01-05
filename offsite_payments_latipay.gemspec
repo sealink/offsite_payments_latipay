@@ -28,4 +28,5 @@ Gem::Specification.new do |s|
   s.add_development_dependency('actionpack')
   s.add_development_dependency('actionview')
   s.add_development_dependency('test-unit', '~> 3.0')
+  s.add_development_dependency('pry-byebug')
 end

@@ -189,12 +189,11 @@ ActiveUtils::PostsData.class_eval do
   #alias_method :do_ssl_post, :ssl_post
 
   def self.last_endpoint
-    @@last_endpoint
+    ActiveUtils::PostsData.class_variable_get(:@@last_endpoint)
   end
 
   def ssl_get(endpoint, headers={})
-    #do_ssl_get(endpoint, headers)
-    @@last_endpoint = endpoint
+    ActiveUtils::PostsData.class_variable_set(:@@last_endpoint, endpoint)
     '{"code":0,"message":"SUCCESS","messageCN":"操作成功","merchant_reference":"22TEST","status":"pending","currency":"AUD","amount":0.01,"amount_cny":null,"rate":0.00000,"signature":"22c98f90eefbd40b84aad11321a4881280b5a5ac886a6132b9990c6710212f78","payment_method":"alipay","transaction_id":"2020033000001672","order_id":"2020033000001672","pay_time":"2020-03-30 01:41:14"}'
   end
 
